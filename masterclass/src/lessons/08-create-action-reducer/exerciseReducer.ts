@@ -33,7 +33,9 @@ function themeReducer(state = initialState, action: { type: string; payload?: st
 const setTheme   = (theme: string) => ({ type: SET_THEME,   payload: theme });
 const resetTheme = ()               => ({ type: RESET_THEME });
 
+export { setTheme, resetTheme };
 export const store = configureStore({ reducer: { theme: themeReducer } });
+export type RootState = ReturnType<typeof store.getState>;
 
 // ══════════════════════════════════════════════════════════════
 // YOUR TASK:

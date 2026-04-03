@@ -1,27 +1,8 @@
 import React, { useState } from 'react';
-import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { LessonLayout } from '../../components/LessonLayout';
-
-// ── DEMO STORE ─────────────────────────────────────────────────────────────
-const cartSlice = createSlice({
-  name: 'cart',
-  initialState: { items: [] as { id: number; name: string; qty: number }[] },
-  reducers: {
-    addItem: (state, action: { payload: { id: number; name: string } }) => {
-      const existing = state.items.find(i => i.id === action.payload.id);
-      if (existing) { existing.qty += 1; }
-      else { state.items.push({ ...action.payload, qty: 1 }); } // ← Immer makes push() safe!
-    },
-    removeItem: (state, action: { payload: number }) => {
-      const idx = state.items.findIndex(i => i.id === action.payload);
-      if (idx !== -1) state.items.splice(idx, 1); // ← Immer makes splice() safe!
-    },
-    clearCart: state => { state.items = []; },
-  },
-});
-const demoStore = configureStore({ reducer: { cart: cartSlice.reducer } });
-type S = ReturnType<typeof demoStore.getState>;
+import { ErrorBoundary } from '../../components/ErrorBoundary';
+import * as ex from './exerciseSlice'; // ← YOUR exercise file drives this demo
 
 const PRODUCTS = [
   { id: 1, name: '⚙️ RTK Course' },
@@ -29,63 +10,43 @@ const PRODUCTS = [
   { id: 3, name: '🛠️ DevTools Pack' },
 ];
 
-// ── LIVE DEMO ──────────────────────────────────────────────────────────────
 function Demo() {
-  const items   = useSelector((s: S) => s.cart.items);
+  const items    = useSelector((s: any) => s?.cart?.items ?? []);
   const dispatch = useDispatch();
-  const [mode, setMode] = useState<'immer' | 'spread'>('immer');
-
-  const addCode = mode === 'immer'
-    ? `// ✅ Immer — looks like mutation, IS immutable
-addItem: (state, action) => {
-  const found = state.items.find(i => i.id === action.payload.id);
-  if (found) found.qty += 1;  // "mutation" is safe!
-  else state.items.push({ ...action.payload, qty: 1 });
-}`
-    : `// ❌ Old way — manual spreading (tedious)
-addItem: (state, action) => {
-  const found = state.items.find(i => i.id === action.payload.id);
-  if (found) return {
-    ...state,
-    items: state.items.map(i =>
-      i.id === action.payload.id ? { ...i, qty: i.qty + 1 } : i
-    )
-  };
-  return { ...state, items: [...state.items, { ...action.payload, qty: 1 }] };
-}`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <button className={mode === 'immer' ? 'btn-primary' : 'btn-secondary'} style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }} onClick={() => setMode('immer')}>RTK + Immer</button>
-        <button className={mode === 'spread' ? 'btn-primary' : 'btn-secondary'} style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }} onClick={() => setMode('spread')}>Old Way (spread)</button>
-        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-3)', alignSelf: 'center' }}>same result →</span>
-      </div>
-      <pre style={{ margin: 0, background: 'rgba(0,0,0,0.4)', border: `1px solid ${mode === 'immer' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '8px', padding: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.73rem', lineHeight: 1.65, color: '#e2e8f0', overflowX: 'auto' }}>{addCode}</pre>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         {PRODUCTS.map(p => (
           <button key={p.id} className="btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}
-            onClick={() => dispatch(cartSlice.actions.addItem(p) as any)}>
+            onClick={() => dispatch(ex.addItem(p) as any)}>
             + {p.name}
           </button>
         ))}
         <button className="btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem', color: 'var(--error)', marginLeft: 'auto' }}
-          onClick={() => dispatch(cartSlice.actions.clearCart() as any)}>
+          onClick={() => dispatch((ex as any).clearCart?.() as any)}>
           Clear
         </button>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-        {items.length === 0 && <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '0.85rem' }}>Cart empty — add items above</p>}
-        {items.map(item => (
-          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.04)', borderRadius: '6px' }}>
-            <span style={{ fontSize: '0.85rem' }}>{item.name}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--secondary)' }}>×{item.qty}</span>
-              <button style={{ color: 'var(--error)', fontSize: '0.8rem' }} onClick={() => dispatch(cartSlice.actions.removeItem(item.id) as any)}>✕</button>
-            </div>
+
+      {items.length === 0 && <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '0.85rem' }}>Cart empty — add items above</p>}
+      {items.map((item: any) => (
+        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.6rem 0.9rem', background: 'rgba(255,255,255,0.04)', borderRadius: '8px' }}>
+          <span style={{ flex: 1, fontSize: '0.85rem' }}>{item.name}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface-1)', padding: '0.2rem', borderRadius: '6px' }}>
+            <button style={{ width: '24px', height: '24px', color: 'white', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', display:'flex', alignItems:'center', justifyContent:'center' }}
+              onClick={() => dispatch((ex as any).updateQuantity?.({ id: item.id, delta: -1 }) as any)}>−</button>
+            <span style={{ minWidth: '20px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{item.qty}</span>
+            <button style={{ width: '24px', height: '24px', color: 'white', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', display:'flex', alignItems:'center', justifyContent:'center' }}
+              onClick={() => dispatch((ex as any).updateQuantity?.({ id: item.id, delta: 1 }) as any)}>+</button>
           </div>
-        ))}
-      </div>
+          <button style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}
+            onClick={() => dispatch((ex as any).removeItem?.({ id: item.id }) as any)}>✕</button>
+        </div>
+      ))}
+      <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-3)' }}>
+        💡 <strong>addItem works</strong> immediately. The −/+ and Clear buttons need <code>updateQuantity</code> and <code>clearCart</code> — implement them in <code>exerciseSlice.ts</code>!
+      </p>
     </div>
   );
 }
@@ -96,19 +57,15 @@ export function Lesson({ onComplete }: { onComplete?: () => void }) {
       lessonNumber={2}
       title="createSlice + Immer"
       badge="Senior Essential"
-      whatIsIt={<>
-        <code>createSlice()</code> bundles a reducer, its initial state, and action creators into one object. Inside a slice, RTK's built-in <strong>Immer</strong> library lets you write <em>mutations</em> (<code>state.x = 1</code>, <code>state.arr.push()</code>) that are actually converted to safe immutable updates under the hood.
-      </>}
+      whatIsIt={<><code>createSlice()</code> bundles a reducer, its initial state, and action creators into one object. Inside a slice, RTK's built-in <strong>Immer</strong> library lets you write <em>mutations</em> (<code>state.x = 1</code>, <code>state.arr.push()</code>) that are actually converted to safe immutable updates under the hood.</>}
       whenToUse={[
         'For every feature\'s state — cart, user, notifications, etc.',
         'When state updates would require deep spreads — Immer makes them trivial',
         'When you want action creators auto-generated (no more writing them by hand)',
         'Always in modern RTK apps — createSlice is the primary building block',
       ]}
-      howItWorks={`import { createSlice } from '@reduxjs/toolkit';
-
-const cartSlice = createSlice({
-  name: 'cart',           // prefix for action types: 'cart/addItem'
+      howItWorks={`const cartSlice = createSlice({
+  name: 'cart',
   initialState: { items: [] },
   reducers: {
     // ✅ Immer: looks like mutation, is actually immutable
@@ -117,24 +74,25 @@ const cartSlice = createSlice({
     },
     removeItem: (state, action) => {
       const i = state.items.findIndex(x => x.id === action.payload);
-      state.items.splice(i, 1);         // safe!
+      state.items.splice(i, 1); // safe!
     },
   },
 });
-
-// Auto-generated action creators:
-export const { addItem, removeItem } = cartSlice.actions;
-export default cartSlice.reducer;`}
-      liveDemo={<Provider store={demoStore}><Demo /></Provider>}
-      exerciseTitle="Add Missing Reducers to a Cart Slice"
-      exerciseContext={<>
-        A shopping cart slice already has <code>addItem</code>. It's missing two reducers: <code>updateQuantity</code> and <code>clearCart</code>. The UI is wired up — you just need to add the reducer logic. Remember: you <strong>can</strong> mutate <code>state</code> directly inside a slice reducer!
-      </>}
+export const { addItem, removeItem } = cartSlice.actions;`}
+      liveDemo={
+        <Provider store={ex.store}>
+          <ErrorBoundary>
+            <Demo />
+          </ErrorBoundary>
+        </Provider>
+      }
+      exerciseTitle="Add Missing Reducers"
+      exerciseContext={<>The cart above runs <strong>your</strong> <code>exerciseSlice.ts</code>. <code>addItem</code> already works — add items and see them appear. Your job: implement <code>updateQuantity</code> (the −/+ buttons) and <code>clearCart</code>. Use Immer — you can mutate <code>state</code> directly!</>}
       exerciseSteps={[
-        { text: 'Open the exercise file and find the two TODO reducers', hint: 'src/lessons/02-create-slice/exerciseSlice.ts' },
-        { text: 'Implement updateQuantity: find the item by id and update its qty. If qty reaches 0, remove it.', hint: 'Use state.items.findIndex() + splice() — Immer makes both safe' },
-        { text: 'Implement clearCart: reset items to an empty array', hint: 'state.items = [] — yes, reassigning is fine with Immer!' },
-        { text: 'Export the new action creators from the slice actions', hint: 'Destructure from cartSlice.actions like the other exports' },
+        { text: 'Open exerciseSlice.ts — find the two TODO reducers', hint: 'src/lessons/02-create-slice/exerciseSlice.ts' },
+        { text: 'Implement updateQuantity: find item by id, add delta to qty. If qty ≤ 0 remove it.', hint: 'state.items.findIndex() + state.items.splice() — Immer makes both safe!' },
+        { text: 'Implement clearCart: reset items to empty array', hint: 'state.items = [] — yes, reassigning is fine with Immer' },
+        { text: 'Export updateQuantity and clearCart from cartSlice.actions', hint: 'export const { addItem, updateQuantity, clearCart } = cartSlice.actions' },
       ]}
       exerciseFile="src/lessons/02-create-slice/exerciseSlice.ts"
       solution={`updateQuantity: (state, action: PayloadAction<{ id: number; delta: number }>) => {
@@ -143,15 +101,12 @@ export default cartSlice.reducer;`}
   item.qty += action.payload.delta;
   if (item.qty <= 0) {
     const idx = state.items.findIndex(i => i.id === action.payload.id);
-    state.items.splice(idx, 1); // ← Immer-safe
+    state.items.splice(idx, 1); // Immer-safe
   }
 },
-
 clearCart: (state) => {
-  state.items = []; // ← reassigning the draft is also Immer-safe
+  state.items = []; // Immer-safe
 },
-
-// Export:
 export const { addItem, updateQuantity, clearCart } = cartSlice.actions;`}
       onComplete={onComplete}
     />

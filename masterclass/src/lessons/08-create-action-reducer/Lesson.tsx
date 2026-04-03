@@ -1,53 +1,49 @@
-import React, { useState } from 'react';
-import { configureStore, createAction, createReducer, createSlice } from '@reduxjs/toolkit';
+import React from 'react';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { LessonLayout } from '../../components/LessonLayout';
-
-// ── DEMO: createAction + createReducer ────────────────────────────────────
-const inc   = createAction<number>('counter/increment');
-const dec   = createAction<number>('counter/decrement');
-const reset = createAction('counter/reset');
-
-const counterReducer = createReducer(0, builder => {
-  builder
-    .addCase(inc,   (state, action) => state + action.payload)
-    .addCase(dec,   (state, action) => state - action.payload)
-    .addCase(reset, ()              => 0);
-});
-const demoStore = configureStore({ reducer: { counter: counterReducer } });
-type DS = ReturnType<typeof demoStore.getState>;
+import { ErrorBoundary } from '../../components/ErrorBoundary';
+import * as ex from './exerciseReducer'; // ← YOUR exercise file
 
 function Demo() {
-  const count   = useSelector((s: DS) => s.counter);
-  const dispatch = useDispatch();
-  const [step, setStep] = useState(1);
-  const [lastAction, setLastAction] = useState<string | null>(null);
+  const current  = useSelector((s: any) => s?.theme?.current ?? '—');
+  const previous = useSelector((s: any) => s?.theme?.previous ?? null);
+  const dispatch  = useDispatch();
 
-  const fire = (action: ReturnType<typeof inc | typeof dec | typeof reset>) => {
-    dispatch(action as any);
-    setLastAction(JSON.stringify(action));
-  };
+  const THEMES = ['dark', 'light', 'solarized', 'dracula', 'nord'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <button className="btn-secondary" style={{ padding: '0.5rem 0.9rem', fontSize: '0.82rem' }} onClick={() => fire(dec(step))}>−{step}</button>
-        <span className="demo-value">{count}</span>
-        <button className="btn-primary" style={{ padding: '0.5rem 0.9rem', fontSize: '0.82rem' }} onClick={() => fire(inc(step))}>+{step}</button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>step:</span>
-          <input type="number" value={step} onChange={e => setStep(Number(e.target.value))} min={1} style={{ width: '50px', textAlign: 'center', fontSize: '0.85rem' }} />
+      <div style={{ padding: '1rem', background: current === 'dark' ? 'rgba(0,0,0,0.5)' : current === 'light' ? 'rgba(255,255,255,0.1)' : 'rgba(118,74,188,0.15)', border: '1px solid var(--glass-border)', borderRadius: '8px', transition: 'all 0.3s ease' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '0.2rem' }}>Current theme</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.2rem', color: 'var(--secondary)' }}>{current}</div>
+          </div>
+          {previous && <div style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>← was: {previous}</div>}
         </div>
-        <button className="btn-secondary" style={{ padding: '0.5rem 0.9rem', fontSize: '0.82rem' }} onClick={() => fire(reset())}>Reset</button>
       </div>
-      {lastAction && (
-        <div style={{ padding: '0.6rem 0.9rem', background: 'rgba(0,0,0,0.35)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-          <p style={{ margin: '0 0 0.25rem', fontSize: '0.7rem', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>Last action dispatched:</p>
-          <code style={{ fontSize: '0.8rem', color: 'var(--success)', background: 'none' }}>{lastAction}</code>
-        </div>
-      )}
+
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {THEMES.map(t => (
+          <button key={t} className={current === t ? 'btn-primary' : 'btn-secondary'} style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}
+            onClick={() => dispatch(ex.setTheme(t) as any)}>
+            {t}
+          </button>
+        ))}
+        <button className="btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem', color: 'var(--error)', marginLeft: 'auto' }}
+          onClick={() => dispatch(ex.resetTheme() as any)}>
+          Reset
+        </button>
+      </div>
+
+      <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '0.75rem' }}>
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', marginBottom: '0.3rem' }}>Action produced by setTheme()</div>
+        <code style={{ fontSize: '0.8rem', color: 'var(--success)', background: 'none' }}>
+          {JSON.stringify(ex.setTheme('light'))}
+        </code>
+      </div>
       <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-3)' }}>
-        💡 <code>createAction</code> produces typed action creators. <code>createReducer</code> + builder is type-safe — no more <code>action.type === "..."</code> string comparisons.
+        💡 After migrating to <code>createAction</code>, the action object shown above should have proper TypeScript types on the payload.
       </p>
     </div>
   );
@@ -57,54 +53,20 @@ export function Lesson({ onComplete }: { onComplete?: () => void }) {
   return (
     <LessonLayout
       lessonNumber={8} title="createAction + createReducer" badge="Utility"
-      whatIsIt={<><code>createAction(type)</code> creates a typed action creator. <code>createReducer(initialState, builder)</code> builds a reducer using a <strong>builder pattern</strong> (type-safe <code>addCase</code> calls) instead of a <code>switch/case</code>. These are the lower-level primitives that <code>createSlice</code> uses internally.</>}
+      whatIsIt={<><code>createAction(type)</code> creates a typed action creator. <code>createReducer(initialState, builder)</code> uses a <strong>builder pattern</strong> (type-safe <code>addCase</code>) instead of <code>switch/case</code>. These are the lower-level primitives that <code>createSlice</code> uses internally.</>}
       whenToUse={[
-        'When migrating an existing vanilla reducer to RTK without full createSlice rewrite',
-        'When you need to handle actions from multiple slices in one reducer (addMatcher)',
-        'When fine-grained control over the reducer build process is needed',
-        'Usually you prefer createSlice — but knowing these fundamentals matters',
+        'Migrating an existing vanilla reducer to RTK without a full rewrite',
+        'When you need addMatcher (handle multiple action types with one handler)',
+        'When fine-grained control over reducer build is needed',
+        'Usually prefer createSlice — but these fundamentals matter when reading RTK source',
       ]}
-      howItWorks={`// createAction — makes a typed action creator:
-const increment = createAction<number>('counter/increment');
-increment(5);
-// → { type: 'counter/increment', payload: 5 }
-
-// createReducer — builder pattern (type-safe):
-const counterReducer = createReducer(0, builder => {
-  builder
-    .addCase(increment, (state, action) => state + action.payload)
-    .addCase(decrement, (state, action) => state - action.payload)
-    .addDefaultCase((state) => state); // catch-all
-});
-
-// addMatcher — handle multiple action types:
-builder.addMatcher(
-  (action) => action.type.endsWith('/pending'),
-  (state) => { state.loading = true; }
-);`}
-      liveDemo={<Provider store={demoStore}><Demo /></Provider>}
-      exerciseTitle="Migrate a switch/case Reducer to Builder Pattern"
-      exerciseContext={<>The exercise file has an old-school <code>switch/case</code> reducer for a theme toggle. Rewrite it using <code>createAction</code> + <code>createReducer</code> with the builder pattern.</>}
-      exerciseSteps={[
-        { text: 'Open the exercise file — read the switch/case reducer', hint: 'src/lessons/08-create-action-reducer/exerciseReducer.ts' },
-        { text: 'Use createAction to define setTheme and resetTheme action creators', hint: 'const setTheme = createAction<string>("theme/setTheme")' },
-        { text: 'Rewrite the reducer using createReducer and builder.addCase()', hint: 'createReducer(initialState, builder => { builder.addCase(setTheme, (state, action) => ...) })' },
-        { text: 'Test it: setTheme("light") should produce { type: "theme/setTheme", payload: "light" }', hint: 'console.log(setTheme("light")) to verify the action object shape' },
-      ]}
-      exerciseFile="src/lessons/08-create-action-reducer/exerciseReducer.ts"
-      solution={`import { createAction, createReducer } from '@reduxjs/toolkit';
-
-// ✅ Typed action creators
-const setTheme   = createAction<string>('theme/setTheme');
+      howItWorks={`const setTheme   = createAction<string>('theme/setTheme');
 const resetTheme = createAction('theme/reset');
 
-interface ThemeState { current: string; previous: string | null; }
-const initialState: ThemeState = { current: 'dark', previous: null };
-
-// ✅ Builder pattern — fully type-safe
 const themeReducer = createReducer(initialState, builder => {
   builder
     .addCase(setTheme, (state, action) => {
+      // action.payload is typed as string — no casting!
       state.previous = state.current;
       state.current  = action.payload;
     })
@@ -112,9 +74,39 @@ const themeReducer = createReducer(initialState, builder => {
       state.current  = 'dark';
       state.previous = null;
     });
-});
+});`}
+      liveDemo={
+        <Provider store={ex.store}>
+          <ErrorBoundary>
+            <Demo />
+          </ErrorBoundary>
+        </Provider>
+      }
+      exerciseTitle="Migrate switch/case to Builder Pattern"
+      exerciseContext={<>The theme switcher above runs your <code>exerciseReducer.ts</code>. It works with the old switch/case reducer. Migrate it to <code>createAction</code> + <code>createReducer</code> — same behavior, better TypeScript. Watch the action box at the bottom — after migration it should show a cleaner action object.</>}
+      exerciseSteps={[
+        { text: 'Open exerciseReducer.ts — read the switch/case reducer', hint: 'src/lessons/08-create-action-reducer/exerciseReducer.ts' },
+        { text: 'Replace manual action creators with createAction:', hint: 'const setTheme = createAction<string>("theme/setTheme")' },
+        { text: 'Replace the switch/case reducer with createReducer + builder.addCase()', hint: 'See howItWorks code above — exact pattern to follow' },
+        { text: 'Verify: setTheme("light") should now produce a typed action automatically', hint: 'TypeScript will infer payload as string — no manual type annotation!' },
+      ]}
+      exerciseFile="src/lessons/08-create-action-reducer/exerciseReducer.ts"
+      solution={`import { createAction, createReducer } from '@reduxjs/toolkit';
 
-export { setTheme, resetTheme, themeReducer };`}
+const setTheme   = createAction<string>('theme/setTheme');
+const resetTheme = createAction('theme/reset');
+
+const themeReducer = createReducer(initialState, builder => {
+  builder
+    .addCase(setTheme, (state, action) => {
+      state.previous = state.current;
+      state.current  = action.payload; // ← TypeScript knows this is string!
+    })
+    .addCase(resetTheme, state => {
+      state.current  = 'dark';
+      state.previous = null;
+    });
+});`}
       onComplete={onComplete}
     />
   );

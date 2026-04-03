@@ -34,13 +34,15 @@ const appSlice = createSlice({
   },
 });
 
-// ❌ Selectors deeply nested under 'app':
-export const selectUsers    = (s: { app: typeof initialState }) => s.app.users;
-export const selectProducts = (s: { app: typeof initialState }) => s.app.products;
+// ❌ Selectors over the monolith (wrong shape — update these after splitting)
+export const selectUsers    = (s: any) => s?.users?.list ?? s?.app?.users ?? [];
+export const selectProducts = (s: any) => s?.products?.items ?? s?.app?.products ?? [];
 
-const initialState = appSlice.getInitialState();
+// ❌ Action creators — currently from appSlice (will break after split, that's expected)
+export const { addUser, setUsersLoading, addProduct, setProductFilter, setActiveTab } = appSlice.actions;
 
 export const store = configureStore({ reducer: { app: appSlice.reducer } });
+export type RootState = ReturnType<typeof store.getState>;
 
 // ══════════════════════════════════════════════════════════════
 // YOUR TASK: Split into THREE focused slices:

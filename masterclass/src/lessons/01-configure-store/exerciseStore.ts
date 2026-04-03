@@ -22,11 +22,13 @@ function counterReducer(
     default:          return state;
   }
 }
-
+const preloadedState: CounterState = {
+    count: 0
+  }
 
 export const store = configureStore({
   reducer: {
-    counterReducer: (state, action: { type: string }) => {
+    counterReducer: (state: CounterState = preloadedState, action: { type: string }) => {
       let newCount = state.count;
       if (action.type === "INCREMENT") 
         newCount += 1

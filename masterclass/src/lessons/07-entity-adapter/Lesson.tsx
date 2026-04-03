@@ -1,59 +1,51 @@
 import React, { useState } from 'react';
-import { configureStore, createSlice, createEntityAdapter } from '@reduxjs/toolkit';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { LessonLayout } from '../../components/LessonLayout';
-
-// ── DEMO ───────────────────────────────────────────────────────────────────
-interface Contact { id: number; name: string; email: string; }
-const adapter = createEntityAdapter<Contact>();
-const contactsSlice = createSlice({
-  name: 'contacts',
-  initialState: adapter.getInitialState(),
-  reducers: {
-    addContact:    adapter.addOne,
-    removeContact: adapter.removeOne,
-    updateContact: adapter.updateOne,
-  },
-});
-const demoStore = configureStore({ reducer: { contacts: contactsSlice.reducer } });
-type DS = ReturnType<typeof demoStore.getState>;
-const { selectAll } = adapter.getSelectors((s: DS) => s.contacts);
+import { ErrorBoundary } from '../../components/ErrorBoundary';
+import * as ex from './exerciseSlice'; // ← YOUR exercise file
 
 let nextId = 1;
-const SAMPLE = ['Alice Chen', 'Bob Kowalski', 'Carol White', 'David Park'];
+const NAMES = ['Alice Chen', 'Bob Kowalski', 'Carol White', 'David Park'];
 
 function Demo() {
-  const contacts = useSelector(selectAll);
-  const dispatch  = useDispatch();
+  const contacts = useSelector((s: any) => {
+    try { return ex.selectAllContacts(s); } catch { return s?.contacts?.items ?? []; }
+  });
+  const dispatch = useDispatch();
   const [showRaw, setShowRaw] = useState(false);
-  const rawState = demoStore.getState().contacts;
+  const rawState = ex.store.getState()?.contacts;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <button className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
-          onClick={() => { const n = SAMPLE[nextId % SAMPLE.length]; dispatch(contactsSlice.actions.addContact({ id: nextId++, name: n, email: `${n.split(' ')[0].toLowerCase()}@test.com` }) as any); }}>
+          onClick={() => {
+            const name = NAMES[nextId % NAMES.length];
+            dispatch(ex.addContact({ id: nextId++, name, email: `${name.split(' ')[0].toLowerCase()}@test.com` }) as any);
+          }}>
           + Add Contact
         </button>
         <button className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
           onClick={() => setShowRaw(s => !s)}>
-          {showRaw ? 'Hide' : 'Show'} Raw Normalized State
+          {showRaw ? 'Hide' : 'Show'} Raw State
         </button>
       </div>
-      {SAMPLE.length > 0 && contacts.map(c => (
+
+      {(contacts ?? []).map((c: any) => (
         <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', fontSize: '0.85rem' }}>
           <div><strong>{c.name}</strong> <span style={{ color: 'var(--text-3)' }}>· {c.email}</span></div>
-          <button style={{ color: 'var(--error)', fontSize: '0.8rem' }} onClick={() => dispatch(contactsSlice.actions.removeContact(c.id) as any)}>✕</button>
+          <button style={{ color: 'var(--error)', fontSize: '0.8rem' }} onClick={() => dispatch(ex.removeContact(c.id) as any)}>✕</button>
         </div>
       ))}
-      {contacts.length === 0 && <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '0.82rem' }}>No contacts — add some</p>}
+      {(!contacts || contacts.length === 0) && <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '0.82rem' }}>No contacts yet</p>}
+
       {showRaw && (
         <pre style={{ margin: 0, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(118,74,188,0.3)', borderRadius: '8px', padding: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: '#e2e8f0', overflowX: 'auto' }}>
           {JSON.stringify(rawState, null, 2)}
         </pre>
       )}
       <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-3)' }}>
-        💡 Click "Show Raw Normalized State" — see how <code>ids</code> is an array of keys and <code>entities</code> is a dictionary. O(1) lookups!
+        💡 Show Raw State before and after implementing <code>createEntityAdapter</code>. Before: <code>{'{ items: [...] }'}</code>. After: <code>{'{ ids: [...], entities: {...} }'}</code>.
       </p>
     </div>
   );
@@ -63,60 +55,57 @@ export function Lesson({ onComplete }: { onComplete?: () => void }) {
   return (
     <LessonLayout
       lessonNumber={7} title="createEntityAdapter" badge="Senior Essential"
-      whatIsIt={<><code>createEntityAdapter</code> manages a <strong>normalized</strong> collection: instead of an array, state uses <code>{'{ ids: [], entities: {} }'}</code>. This gives you O(1) lookup by id, built-in CRUD operations (<code>addOne</code>, <code>removeOne</code>, <code>updateOne</code>, <code>setAll</code>...), and pre-built selectors.</>}
+      whatIsIt={<><code>createEntityAdapter</code> manages a <strong>normalized</strong> collection: instead of an array, state becomes <code>{'{ ids: [], entities: {} }'}</code>. O(1) lookup by id, built-in CRUD operations, and pre-built selectors — all generated automatically.</>}
       whenToUse={[
-        'Managing lists of items that have unique IDs: users, contacts, posts, products',
-        'When you frequently look up items by ID (O(1) vs O(n) for arrays)',
-        'When multiple parts of the app reference the same items (normalized = single source)',
-        'When you need sorting, pagination, or derived views of the same data',
+        'Managing collections of items with unique IDs (users, contacts, posts)',
+        'When you need fast id-based lookup (O(1) instead of O(n) with arrays)',
+        'When multiple parts of the app reference the same items',
+        'When you need sorting/pagination backed by a normalized store',
       ]}
-      howItWorks={`import { createEntityAdapter, createSlice } from '@reduxjs/toolkit';
+      howItWorks={`const adapter = createEntityAdapter<Contact>();
 
-// 1. Create an adapter for your entity type
-const adapter = createEntityAdapter<User>();
-
-// 2. Use it to create the slice
-const usersSlice = createSlice({
-  name: 'users',
+const contactsSlice = createSlice({
+  name: 'contacts',
   initialState: adapter.getInitialState(), // { ids: [], entities: {} }
   reducers: {
-    addUser:    adapter.addOne,    // adds { id, ...fields }
-    removeUser: adapter.removeOne, // removes by id
-    updateUser: adapter.updateOne, // {id, changes: {...}} patch update
-    setUsers:   adapter.setAll,    // replace entire collection
+    addContact:    adapter.addOne,    // no push() needed
+    removeContact: adapter.removeOne, // no filter() needed
+    updateContact: adapter.updateOne, // no map() needed
   },
 });
-
-// 3. Get pre-built selectors:
-const { selectAll, selectById } = adapter.getSelectors(
-  (state: RootState) => state.users
-);`}
-      liveDemo={<Provider store={demoStore}><Demo /></Provider>}
-      exerciseTitle="Rewrite a Plain Array Slice with createEntityAdapter"
-      exerciseContext={<>The exercise file has a contacts slice backed by a plain <strong>array</strong>. It's missing fast lookups and has duplicate CRUD logic. Rewrite it using <code>createEntityAdapter</code>.</>}
+const { selectAll } = adapter.getSelectors(s => s.contacts);`}
+      liveDemo={
+        <Provider store={ex.store}>
+          <ErrorBoundary>
+            <Demo />
+          </ErrorBoundary>
+        </Provider>
+      }
+      exerciseTitle="Migrate Array Slice to createEntityAdapter"
+      exerciseContext={<>The contacts above use a <strong>plain array</strong> (watch the raw state). Migrate to <code>createEntityAdapter</code> — when done, the raw state should change from <code>{'{ items: [...] }'}</code> to <code>{'{ ids: [...], entities: {...} }'}</code>. The UI still works because <code>selectAllContacts</code> always returns an array.</>}
       exerciseSteps={[
-        { text: 'Open the exercise file — read the current array-based slice', hint: 'src/lessons/07-entity-adapter/exerciseSlice.ts' },
+        { text: 'Open exerciseSlice.ts — read the array-based slice', hint: 'src/lessons/07-entity-adapter/exerciseSlice.ts' },
         { text: 'Create an adapter: const adapter = createEntityAdapter<Contact>()', hint: 'Import createEntityAdapter from "@reduxjs/toolkit"' },
-        { text: 'Replace initialState with adapter.getInitialState()', hint: 'This sets up the { ids: [], entities: {} } shape' },
-        { text: 'Replace the reducer functions with adapter.addOne, adapter.removeOne, adapter.updateOne', hint: 'They have the same names — just point to the adapter methods' },
-        { text: 'Export selectors using adapter.getSelectors()', hint: 'const { selectAll, selectById } = adapter.getSelectors(s => s.contacts)' },
+        { text: 'Replace initialState with adapter.getInitialState()', hint: '{ ids: [], entities: {} } shape' },
+        { text: 'Replace reducer functions with adapter.addOne, removeOne, updateOne', hint: 'These replace your manual push/filter/map logic' },
+        { text: 'Export selectors: const { selectAll: selectAllContacts } = adapter.getSelectors(s => s.contacts)', hint: 'Then check raw state — it should now show ids + entities!' },
       ]}
       exerciseFile="src/lessons/07-entity-adapter/exerciseSlice.ts"
       solution={`const adapter = createEntityAdapter<Contact>();
 
 const contactsSlice = createSlice({
   name: 'contacts',
-  initialState: adapter.getInitialState(), // ✅ { ids: [], entities: {} }
+  initialState: adapter.getInitialState(), // { ids: [], entities: {} }
   reducers: {
-    addContact:    adapter.addOne,    // ✅ no array.push needed
-    removeContact: adapter.removeOne, // ✅ no array.filter needed
-    updateContact: adapter.updateOne, // ✅ no array.map needed
+    addContact:    adapter.addOne,
+    removeContact: adapter.removeOne,
+    updateContact: adapter.updateOne,
   },
 });
 
-// ✅ Pre-built, memoized selectors:
-export const { selectAll: selectAllContacts, selectById: selectContactById }
-  = adapter.getSelectors((state: RootState) => state.contacts);`}
+export const { selectAll: selectAllContacts }
+  = adapter.getSelectors((s: RootState) => s.contacts);
+export const { addContact, removeContact, updateContact } = contactsSlice.actions;`}
       onComplete={onComplete}
     />
   );
