@@ -5,7 +5,7 @@
 // dispatched in the app, even unrelated ones. Fix it with shallowEqual.
 // ══════════════════════════════════════════════════════════════
 import React, { useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { shallowEqual, useSelector } from 'react-redux';
 // ❌ TODO: also import shallowEqual from 'react-redux'
 
 interface RootState {
@@ -23,7 +23,7 @@ export function Dashboard() {
     name:  state.user.name,
     email: state.user.email,
     role:  state.user.role,
-  }));
+  }), shallowEqual);
   // ❌ TODO: Pass shallowEqual as the second argument above
 
   return (

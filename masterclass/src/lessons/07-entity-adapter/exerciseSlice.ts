@@ -6,7 +6,7 @@
 // O(1) lookups and built-in CRUD operations.
 // ══════════════════════════════════════════════════════════════
 
-import { configureStore, createSlice } from '@reduxjs/toolkit';
+import { configureStore, createEntityAdapter, createSlice } from '@reduxjs/toolkit';
 // ❌ TODO: also import createEntityAdapter
 
 interface Contact { id: number; name: string; email: string; phone?: string; }
@@ -15,36 +15,41 @@ interface Contact { id: number; name: string; email: string; phone?: string; }
 // ❌ CURRENT: plain array — slow O(n) lookups, manual CRUD
 // ══════════════════════════════════════════════════════════════
 
+const adapter = createEntityAdapter<Contact>()
+
 const contactsSlice = createSlice({
   name: 'contacts',
-  initialState: { items: [] as Contact[] },  // ← ❌ plain array
+  initialState: adapter.getInitialState(),  // ← ❌ plain array
   reducers: {
     // ❌ Manual find-and-mutate (tedious, error-prone):
-    addContact: (state, action: { payload: Contact }) => {
-      state.items.push(action.payload);
-    },
-    removeContact: (state, action: { payload: number }) => {
-      state.items = state.items.filter(c => c.id !== action.payload); // ← O(n)!
-    },
-    updateContact: (state, action: { payload: { id: number; changes: Partial<Contact> } }) => {
-      const contact = state.items.find(c => c.id === action.payload.id); // ← O(n)!
-      if (contact) Object.assign(contact, action.payload.changes);
-    },
+    addContact: adapter.addOne,
+    removeContact: adapter.removeOne,
+    updateContact: adapter.updateOne,
   },
 });
-
+interface StateType {
+  contacts: Array<Contact>
+}
 // ❌ Manual selectors:
-export const selectAllContacts = (state: { contacts: ReturnType<typeof contactsSlice.reducer> }) =>
-  state.contacts.items;
+// export const selectAllContacts = adapter.getSelectors((s) => s?.contacts);
 
-export const selectContactById = (id: number) =>
-  (state: { contacts: ReturnType<typeof contactsSlice.reducer> }) =>
-    state.contacts.items.find(c => c.id === id); // ← still O(n)!
+// export const selectContactById = (id: number) =>
+//   (state: { contacts: ReturnType<typeof contactsSlice.reducer> }) =>
+//     state.contacts.items.find(c => c.id === id); // ← still O(n)!
+
 
 export const { addContact, removeContact, updateContact } = contactsSlice.actions;
 
 export const store = configureStore({ reducer: { contacts: contactsSlice.reducer } });
 export type RootState = ReturnType<typeof store.getState>;
+
+
+export const {
+  selectAll: selectAllContacts,
+  selectById: selectContactById,
+
+} = adapter.getSelectors((state: RootState) => state.contacts)
+
 
 // ══════════════════════════════════════════════════════════════
 // YOUR TASK:

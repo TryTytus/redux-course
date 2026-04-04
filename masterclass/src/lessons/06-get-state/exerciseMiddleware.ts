@@ -26,20 +26,25 @@ export const loggerMiddleware: Middleware = (store) => (next) => (action) => {
   // ❌ Step 1: Call store.getState() to read state BEFORE the action
   // const prevState = ???
 
+  const prevState = store.getState()
+
   // ❌ Step 2: Call next(action) to pass it to the reducer
-  // const result = ???
+  const result = next(action)
+  
+
 
   // ❌ Step 3: Call store.getState() AGAIN to read state AFTER the action
   // const nextState = ???
+    const nextState = store.getState()
 
   // ❌ Step 4: Log the before/after
-  // console.group(`Action: ${(action as any).type}`);
-  // console.log('Before:', prevState);
-  // console.log('After:', nextState);
-  // console.groupEnd();
+  console.group(`Action: ${(action as any).type}`);
+  console.log('Before:', prevState);
+  console.log('After:', nextState);
+  console.groupEnd();
 
   // ❌ Step 5: Return the result
-  // return result;
+  return result;
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -50,7 +55,7 @@ export const { increment, decrement, setLabel } = counterSlice.actions;
 export const store = configureStore({
   reducer: { counter: counterSlice.reducer },
   // ❌ TODO: add middleware option here:
-  // middleware: (getDefault) => getDefault().concat(loggerMiddleware),
+  middleware: (getDefault) => getDefault().concat(loggerMiddleware),
 });
 export type RootState = ReturnType<typeof store.getState>;
 

@@ -4,23 +4,32 @@
 // This component has hardcoded data and local state.
 // Your task: wire it up with useSelector + useDispatch.
 // ══════════════════════════════════════════════════════════════
+
 import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { store, markAllRead, addNotification, type RootState } from './exerciseStore'
+
 // ❌ TODO: import useSelector and useDispatch from 'react-redux'
 // ❌ TODO: import markAllRead, addNotification from './exerciseStore'
 // ❌ TODO: import RootState from './exerciseStore'
 
 export function NotificationBell() {
   // ❌ PROBLEM: This is hardcoded — it should come from the store!
-  const unreadCount = 2; // ← replace with useSelector
+  // const unreadCount = 2;
+  const unreadCount = useSelector((state: RootState) => state.notifications.unreadCount)
+  const dispatch = useDispatch()
 
   // ❌ PROBLEM: This is local state — real data comes from the store
-  const [items] = useState([
-    { id: 1, message: '🎉 Welcome to Redux Masterclass!', read: false },
-    { id: 2, message: '📦 New lesson available: createSlice', read: false },
-  ]);
+  // const [items] = useState([
+  //   { id: 1, message: '🎉 Welcome to Redux Masterclass!', read: false },
+  //   { id: 2, message: '📦 New lesson available: createSlice', read: false },
+  // ]);
+
+  const items = useSelector((state: RootState) => state.notifications.items)
 
   const handleMarkRead = () => {
     // ❌ PROBLEM: This does nothing! Should dispatch markAllRead()
+    dispatch(markAllRead())
     console.log('TODO: dispatch markAllRead()');
   };
 

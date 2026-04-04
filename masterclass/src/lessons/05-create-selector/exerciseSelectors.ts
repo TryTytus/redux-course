@@ -6,7 +6,7 @@
 // when the product list hasn't changed. Memoize them!
 // ══════════════════════════════════════════════════════════════
 
-import { configureStore, createSlice } from '@reduxjs/toolkit';
+import { configureStore, createSelector, createSlice } from '@reduxjs/toolkit';
 // ❌ TODO: import createSelector from '@reduxjs/toolkit'
 
 interface Product { id: number; name: string; price: number; category: string; }
@@ -41,16 +41,33 @@ export const selectMinPrice = (state: RootState) => state.products.minPrice;
 // ❌ NOT MEMOIZED — these run on every render
 // ══════════════════════════════════════════════════════════════
 
-export const selectExpensiveItems = (state: RootState) =>
-  state.products.items.filter(p => p.price >= state.products.minPrice); // recalculates always!
+// export const selectExpensiveItems = (state: RootState) =>
+//   state.products.items.filter(p => p.price >= state.products.minPrice); // recalculates always!
 
-export const selectItemCount = (state: RootState) =>
-  state.products.items.filter(p => p.price >= state.products.minPrice).length; // duplicate work!
+// export const selectItemCount = (state: RootState) =>
+//   state.products.items.filter(p => p.price >= state.products.minPrice).length; // duplicate work!
 
-export const selectTotalValue = (state: RootState) =>
-  state.products.items
-    .filter(p => p.price >= state.products.minPrice)
-    .reduce((sum, p) => sum + p.price, 0); // triple duplicate!
+// export const selectTotalValue = (state: RootState) =>
+//   state.products.items
+//     .filter(p => p.price >= state.products.minPrice)
+//     .reduce((sum, p) => sum + p.price, 0); // triple duplicate!
+
+
+export const selectExpensiveItems = createSelector(
+  [selectAllItems, selectMinPrice], 
+  (items, minPrice) => items.filter(p => p.price >= minPrice)
+)
+
+export const selectItemCount = createSelector(
+  [selectAllItems],
+  (filtredItems) => filtredItems.length
+)
+
+export const selectTotalValue = createSelector(
+  [selectExpensiveItems],
+  (filtredItems) => filtredItems.reduce((sum, p) => sum + p.price, 0)
+)
+
 
 // ══════════════════════════════════════════════════════════════
 // YOUR TASK:

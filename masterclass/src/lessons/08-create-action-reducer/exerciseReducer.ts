@@ -5,7 +5,7 @@
 // style. Migrate it to createAction + createReducer builder pattern.
 // ══════════════════════════════════════════════════════════════
 
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, createAction, createReducer } from '@reduxjs/toolkit';
 // ❌ TODO: import createAction, createReducer from '@reduxjs/toolkit'
 
 interface ThemeState { current: string; previous: string | null; }
@@ -18,20 +18,35 @@ const initialState: ThemeState = { current: 'dark', previous: null };
 const SET_THEME   = 'theme/setTheme';
 const RESET_THEME = 'theme/reset';
 
-function themeReducer(state = initialState, action: { type: string; payload?: string }): ThemeState {
-  switch (action.type) {
-    case SET_THEME:
-      return { current: action.payload!, previous: state.current };
-    case RESET_THEME:
-      return { current: 'dark', previous: null };
-    default:
-      return state;
-  }
-}
+// function themeReducer(state = initialState, action: { type: string; payload?: string }): ThemeState {
+//   switch (action.type) {
+//     case SET_THEME:
+//       return { current: action.payload!, previous: state.current };
+//     case RESET_THEME:
+//       return { current: 'dark', previous: null };
+//     default:
+//       return state;
+//   }
+// }
+
+const setTheme = createAction<string>(SET_THEME);
+const resetTheme = createAction(RESET_THEME);
+
+const themeReducer = createReducer(initialState, (builder) => {
+  return builder.addCase(setTheme, (state, action) => {
+    state.previous = state.current;
+    state.current = action.payload;
+  }).addCase(resetTheme, (state) => {
+    state.previous = null;
+    state.current = initialState.current;
+  })
+})
 
 // ❌ Manual action creators (no TypeScript inference!):
-const setTheme   = (theme: string) => ({ type: SET_THEME,   payload: theme });
-const resetTheme = ()               => ({ type: RESET_THEME });
+// const setTheme   = (theme: string) => ({ type: SET_THEME,   payload: theme });
+// const resetTheme = ()               => ({ type: RESET_THEME });
+
+
 
 export { setTheme, resetTheme };
 export const store = configureStore({ reducer: { theme: themeReducer } });
